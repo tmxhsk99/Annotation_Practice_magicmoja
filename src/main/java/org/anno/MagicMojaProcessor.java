@@ -1,17 +1,16 @@
 package org.anno;
 
 import com.google.auto.service.AutoService;
+import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.JavaFile;
+import com.squareup.javapoet.MethodSpec;
+import com.squareup.javapoet.TypeSpec;
 
-import javax.annotation.processing.AbstractProcessor;
-import javax.annotation.processing.Processor;
-import javax.annotation.processing.RoundEnvironment;
-import javax.annotation.processing.SupportedSourceVersion;
+import javax.annotation.processing.*;
 import javax.lang.model.SourceVersion;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.Name;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.*;
 import javax.tools.Diagnostic;
+import java.io.IOException;
 import java.util.Set;
 
 @AutoService(Processor.class)
@@ -36,6 +35,8 @@ public class MagicMojaProcessor extends AbstractProcessor {
         // Magic이라는 애노테이션이 붙은 앨리맨트를 전부 가져온다.
         Set<? extends Element> elementsAnnotatedWith = roundEnv.getElementsAnnotatedWith(Magic.class);
 
+        //제대로된 위치에 애너테이션을 적용했는 지 유효성을 검사한다.
+
         //만약에 해당 Magic 이란 애노테이션이 interface에만 붙이도록 하고 싶은 경우
         //애너테이션 자체의 @Target(ElementType.TYPE) 기능은 interface,Enum,Class 로 한정시키지 못하므로
         //프로세서에서 자체적으로 걸러야한다.
@@ -46,7 +47,41 @@ public class MagicMojaProcessor extends AbstractProcessor {
             } else {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.NOTE,"Processing " + simpleName);
             }
+
+            //소스 생성로직 해당 로직이 적용된 애너테이션은 다음과 같은 소스를 생성해낸다
+            //javaPoet 라이브러리를 사용한다.
+            TypeElement typeElement = (TypeElement) element;
+            ClassName className = ClassName.get(typeElement);
+            //우리는 pullOut이라는 메서드를 구현해야한다.
+            MethodSpec pullOut = MethodSpec.methodBuilder("pullOut")
+                    .addModifiers(Modifier.PUBLIC)
+                    .returns(String.class)
+                    .addStatement("return $S", "Rabbit!")
+                    .build();
+
+            TypeSpec magicMoja = TypeSpec.classBuilder("MagicMoja")
+                    .addModifiers(Modifier.PUBLIC)
+                    .addSuperinterface(className)
+                    .addMethod(pullOut)
+                    .build();
+
+
+            //위의 공정은 메모리상의 코드를 정의한것 실제 소스를 써야한다.
+
+            Filer filer = processingEnv.getFiler();
+            try {
+                JavaFile.builder(className.packageName(), magicMoja)
+                        .build()
+                        .writeTo(filer);
+            } catch (IOException e) {
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "FATAL ERROR " + e);
+            }
+
         }
+
+
+
+
         return true;
     }
 }

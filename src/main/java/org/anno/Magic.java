@@ -11,6 +11,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.TYPE) //애노테이션을 적용시킬 클래스를 한정시킬 수 있음 (Interface, Class, Enum)
 //해당 애노테이셔능 어디까지 유지할 건지 (소스,클래스,런타임)
 @Retention(RetentionPolicy.SOURCE)
-
 public @interface Magic {
 }
